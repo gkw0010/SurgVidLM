@@ -1,6 +1,7 @@
 [submodule "transformers"]
 	path = transformers
-	url = git@github.com:FrankMOWJ/transformers-SurgVidLM.git
+	url = https://github.com/FrankMOWJ/transformers-SurgVidLM.git
 [submodule "LLaMA-Factory"]
 	path = LLaMA-Factory
-	url = git@github.com:FrankMOWJ/LLaMA-Factory-SurgVidLM.git
+	url = https://github.com/FrankMOWJ/transformers-SurgVidLM.git
+
