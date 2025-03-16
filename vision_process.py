@@ -256,8 +256,8 @@ def _read_video_decord(
         clip_start_second, clip_end_second = ele["timecode"]
         if clip_end_second == -1:
             clip_end_second = total_frames // video_fps
-            clip_start_frame_idx, clip_end_frame_idx = int(clip_start_second * video_fps), int(clip_end_second * video_fps)
-            clip_tot_frames = clip_end_frame_idx - clip_start_frame_idx
+        clip_start_frame_idx, clip_end_frame_idx = int(clip_start_second * video_fps), int(clip_end_second * video_fps)
+        clip_tot_frames = clip_end_frame_idx - clip_start_frame_idx
         
         if nframes <= clip_tot_frames:
             clip_idx = torch.linspace(clip_start_frame_idx, clip_end_frame_idx - 1, nframes).round().long()
