@@ -18,7 +18,8 @@ pip install flash-attn --no-build-isolation
 
 ## Dataset
 
-Download the dataset from [here](xxx)
+Download the dataset from [here](https://mycuhk-my.sharepoint.com/:u:/g/personal/1155180074_link_cuhk_edu_hk/ESXzk2TtCmpKjiDo3USdKbIBsWLbrYy17ocy9Z8eyr-RXQ?e=uD5Yoi)
+Note that the test set of our SVU-31K is available, the training set will be publicly available soon.
 
 ## Train
 
