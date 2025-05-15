@@ -1,0 +1,13 @@
+### Note: DO NOT use quantized model or quantization_bit when merging lora adapters
+
+### model
+model_name_or_path: output/surgvidlm_lora_sft_stage1
+adapter_name_or_path: saves/surgvidlm/lora/video_clip
+template: surgvidlm
+trust_remote_code: true
+
+### export
+export_dir: output/surgvidlm_lora_sft_stage2
+export_size: 5
+export_device: cpu
+export_legacy_format: false

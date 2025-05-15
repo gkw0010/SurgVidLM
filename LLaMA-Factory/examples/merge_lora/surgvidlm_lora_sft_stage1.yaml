@@ -1,0 +1,14 @@
+### Note: DO NOT use quantized model or quantization_bit when merging lora adapters
+
+### model
+# NOTE: change the 'model_name_or_path' to your local path 
+model_name_or_path: Qwen/Qwen2-VL-7B-Instruct
+adapter_name_or_path: saves/surgvidlm/lora/full_video
+template: surgvidlm
+trust_remote_code: true
+
+### export
+export_dir: output/surgvidlm_lora_sft_stage1
+export_size: 5
+export_device: cpu
+export_legacy_format: false
