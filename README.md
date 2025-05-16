@@ -18,7 +18,9 @@ pip install flash-attn --no-build-isolation
 
 ## Dataset
 
-Download the dataset from [here](https://pan.quark.cn/s/0e6f74ff02fc#/list/share). Note that the test set of our SVU-31K is available, the training set will be publicly available after the paper is accepted.
+Download the dataset from [here](https://pan.quark.cn/s/0e6f74ff02fc#/list/share). For the convenience of uploading, we have split the video of the test set into two parts. After downloading, please put these two parts together.
+
+Note that the test set of our SVU-31K is available, the training set will be publicly available after the paper is accepted.
 
 After downloading the data, put all the `json` files into `./LLaMA-Factory/data` and change the videos path to your local path.
 
