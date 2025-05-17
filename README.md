@@ -40,7 +40,7 @@ sh stage2_script.sh
 ```
 
 ## Inference
-
+You can download the checkpoint after fine-tuning on our data from [here](https://pan.quark.cn/s/550ae982845e) and do inference.
 ```bash
 # Stage 1 inference
 CUDA_VISIBLE_DEVICES=0,1 python full_video_inference.py
