@@ -37,6 +37,7 @@ sh stage1_script.sh
 For stage 2 training(video perception and temporal reasoning), run 
 ```bash
 sh stage2_script.sh
+
 ```
 
 ## Inference
