@@ -24,21 +24,6 @@ Note that the test set of our SVU-31K is available, the training set will be pub
 
 After downloading the data, put all the `json` files into `./LLaMA-Factory/data` and change the videos path to your local path.
 
-## Train
-
-Before training, please download the pre-trained checkpoint of `Qwen2-VL-7B-Instruct` following the instruction in [Qwen2.5-VL](https://github.com/QwenLM/Qwen2.5-VL).
-
-We fine-tune our model based on LLaMA-Factory, ensure the `model_name_or_path` in the config file points to the pre-trained model's directory.
-
-For stage 1 training(full video understanding), run 
-```bash
-sh stage1_script.sh
-```
-For stage 2 training(video perception and temporal reasoning), run 
-```bash
-sh stage2_script.sh
-
-```
 
 ## Inference
 You can download the checkpoint after fine-tuning on our data from [here](https://pan.quark.cn/s/550ae982845e) and do inference.
