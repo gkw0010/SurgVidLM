@@ -13,7 +13,7 @@ cd LLaMA-Factory && pip install -e ".[torch,metrics]" && cd ..
 cd transformers && pip install . && cd ..
 
 pip install decord
-pip install flash-attn --no-build-isolation
+pip install flash-attn==2.8.3 --no-build-isolation
 ```
 
 ## Dataset
