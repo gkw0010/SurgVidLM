@@ -14,6 +14,7 @@ cd transformers && pip install . && cd ..
 
 pip install decord
 pip install flash-attn==2.8.3 --no-build-isolation
+pip install qwen-vl-utils==0.0.9
 ```
 
 ## Dataset
