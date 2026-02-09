@@ -15,7 +15,37 @@
     }
   },
   "svu-31k-video-clip": {
-    "file_name": "svu-31k-video-clip-train.json",
+    "file_name": "/mnt/data2/wgk/surg_data/clip_train_set_stage2_change_prompt.json",
+    "formatting": "sharegpt",
+    "columns": {
+      "messages": "messages",
+      "videos": "videos",
+      "tag": "tags"
+    },
+    "tags": {
+      "role_tag": "role",
+      "content_tag": "content",
+      "user_tag": "user",
+      "assistant_tag": "assistant"
+    }
+  },
+  "svu-31k-video-clip-eval": {
+    "file_name": "/mnt/data2/wgk/test/surgvidlm_ablation/clip_test_set_stage2_change_prompt_mini.json",
+    "formatting": "sharegpt",
+    "columns": {
+      "messages": "messages",
+      "videos": "videos",
+      "tag": "tags"
+    },
+    "tags": {
+      "role_tag": "role",
+      "content_tag": "content",
+      "user_tag": "user",
+      "assistant_tag": "assistant"
+    }
+  },
+  "svu-31k-video-clip-mini": {
+    "file_name": "/mnt/data2/wgk/surg_data/clip_train_set_stage2_change_prompt_mini.json",
     "formatting": "sharegpt",
     "columns": {
       "messages": "messages",

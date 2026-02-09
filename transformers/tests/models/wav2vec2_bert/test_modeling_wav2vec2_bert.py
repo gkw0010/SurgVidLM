@@ -21,6 +21,7 @@ from datasets import load_dataset
 
 from transformers import Wav2Vec2BertConfig, is_torch_available
 from transformers.testing_utils import (
+    is_pt_flax_cross_test,
     require_torch,
     require_torch_accelerator,
     require_torch_fp16,
@@ -558,6 +559,18 @@ class Wav2Vec2BertModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.Test
     def test_model_get_set_embeddings(self):
         pass
 
+    # Ignore copy
+    @unittest.skip(reason="non-robust architecture does not exist in Flax")
+    @is_pt_flax_cross_test
+    def test_equivalence_flax_to_pt(self):
+        pass
+
+    # Ignore copy
+    @unittest.skip(reason="non-robust architecture does not exist in Flax")
+    @is_pt_flax_cross_test
+    def test_equivalence_pt_to_flax(self):
+        pass
+
     def test_retain_grad_hidden_states_attentions(self):
         config, inputs_dict = self.model_tester.prepare_config_and_inputs_for_common()
         config.output_hidden_states = True
@@ -782,7 +795,7 @@ class Wav2Vec2BertUtilsTest(unittest.TestCase):
 
         features = (torch.arange(sequence_length * hidden_size, device=torch_device) // hidden_size).view(
             sequence_length, hidden_size
-        )  # each value in vector consists of same value
+        )  # each value in vector consits of same value
         features = features[None, :].expand(batch_size, sequence_length, hidden_size).contiguous()
 
         # sample negative indices
@@ -811,7 +824,7 @@ class Wav2Vec2BertUtilsTest(unittest.TestCase):
 
         features = (torch.arange(sequence_length * hidden_size, device=torch_device) // hidden_size).view(
             sequence_length, hidden_size
-        )  # each value in vector consists of same value
+        )  # each value in vector consits of same value
         features = features[None, :].expand(batch_size, sequence_length, hidden_size).contiguous()
 
         # replace masked feature vectors with -100 to test that those are not sampled

@@ -136,6 +136,7 @@ class Qwen2VLImageProcessor(BaseImageProcessor):
         merge_size: int = 2,
         **kwargs,
     ) -> None:
+        print("使用slow")
         super().__init__(**kwargs)
         self.do_resize = do_resize
         self.resample = resample
@@ -276,7 +277,7 @@ class Qwen2VLImageProcessor(BaseImageProcessor):
         self,
         images: ImageInput,
         videos: VideoInput = None,
-        clips: VideoInput = None,
+        clips: VideoInput = None, #surgvidlm
         do_resize: bool = None,
         size: Dict[str, int] = None,
         resample: PILImageResampling = None,
@@ -416,7 +417,7 @@ class Qwen2VLImageProcessor(BaseImageProcessor):
             vision_grid_thws = np.array(vision_grid_thws)
             data = {"pixel_values_videos": pixel_values, "video_grid_thw": vision_grid_thws}
             
-            # SurgVideLM
+            # SurgVidLM
             if clips is not None:
                 clips_pixel_values, clips_vision_grid_thws = [], []
                 for images in clips:

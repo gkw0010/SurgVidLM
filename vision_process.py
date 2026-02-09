@@ -30,10 +30,14 @@ MAX_RATIO = 200
 VIDEO_MIN_PIXELS = 128 * 28 * 28
 VIDEO_MAX_PIXELS = 768 * 28 * 28
 VIDEO_MAX_PIXELS = 768 * 28 * 28
+
 FRAME_FACTOR = 2
 FPS = 2.0
 FPS_MIN_FRAMES = 4
 FPS_MAX_FRAMES = 768
+
+FPS_MAX_FRAMES_FULL_VIDEO=128 #max frames for full video
+
 
 # Set the maximum number of video token inputs.
 # Here, 128K represents the maximum number of input tokens for the VLLM model.
@@ -241,45 +245,50 @@ def _read_video_decord(
         torch.Tensor: the video tensor with shape (T, C, H, W).
     """
     import decord
-    video_path = ele["video"]
+    video_path = ele["video"] 
+    
+    #sample full video
     vr = decord.VideoReader(video_path)
 
-    total_frames, video_fps = len(vr), vr.get_avg_fps()
+    total_frames, video_fps = len(vr), vr.get_avg_fps() 
 
-    logger.info(f"decord:  {video_path=}, {total_frames=}, {video_fps=}.")
-    
-    nframes = smart_nframes(ele, total_frames=total_frames, video_fps=video_fps)
-    print(f"{nframes} frames are selected.")
+    idx = torch.linspace(0, total_frames - 1, FPS_MAX_FRAMES_FULL_VIDEO).round().long().tolist()
+    full_video = vr.get_batch(idx).asnumpy()
+    full_video = torch.tensor(full_video).permute(0, 3, 1, 2)  # Convert to TCHW format
+
+    # surgvidlm
     clip = None
     if "timecode" in ele:
         print(f'preparing for stage 2 inference ...')
         clip_start_second, clip_end_second = ele["timecode"]
         if clip_end_second == -1:
             clip_end_second = total_frames // video_fps
-        clip_start_frame_idx, clip_end_frame_idx = int(clip_start_second * video_fps), int(clip_end_second * video_fps)
-        clip_tot_frames = clip_end_frame_idx - clip_start_frame_idx
+        clip_start_frame_idx, clip_end_frame_idx = int(clip_start_second * video_fps), int(clip_end_second * video_fps) 
+        clip_tot_frames = clip_end_frame_idx - clip_start_frame_idx 
         
-        if nframes <= clip_tot_frames:
-            clip_idx = torch.linspace(clip_start_frame_idx, clip_end_frame_idx - 1, nframes).round().long()
+        nframes_clip=smart_nframes(ele, total_frames=clip_tot_frames, video_fps=video_fps)
+        # print(f"{nframes_clip} frames are selected for clip")
+        
+        if nframes_clip <= clip_tot_frames:
+            clip_idx = torch.linspace(clip_start_frame_idx, clip_end_frame_idx - 1, nframes_clip).round().long()
+            assert clip_idx.shape[0] == nframes_clip
         else:
-            print(f"full video sample frames({nframes}) is larger than total clip frames({clip_tot_frames}).")
+            print(f"clip sample frames({nframes_clip}) is larger than total clip frames({clip_tot_frames}).")
             clip_idx = torch.linspace(clip_start_frame_idx, clip_end_frame_idx - 1, clip_tot_frames).round().long()
-            supplement_idx = torch.tensor([clip_end_frame_idx] * (nframes - clip_tot_frames)).long()
+            supplement_idx = torch.tensor([clip_end_frame_idx] * (nframes_clip - clip_tot_frames)).long()
             clip_idx = torch.cat([clip_idx, supplement_idx])
             
-            assert clip_idx.shape[0] == nframes
+            assert clip_idx.shape[0] == nframes_clip
 
         clip = vr.get_batch(clip_idx).asnumpy()
         clip = torch.tensor(clip).permute(0, 3, 1, 2)  # Convert to TCHW format
+
     else:
         print(f'preparing for stage 1 inference ...')
-        
-    idx = torch.linspace(0, total_frames - 1, nframes).round().long().tolist()
-    video = vr.get_batch(idx).asnumpy()
-    video = torch.tensor(video).permute(0, 3, 1, 2)  # Convert to TCHW format
     
-    sample_fps = nframes / max(total_frames, 1e-6) * video_fps
-    return video, clip, sample_fps
+    sample_fps = nframes_clip / max(total_frames, 1e-6) * video_fps
+
+    return clip, full_video, sample_fps
 
 
 VIDEO_READER_BACKENDS = {
@@ -306,10 +315,11 @@ def fetch_video(ele: dict, image_factor: int = IMAGE_FACTOR, return_video_sample
     if isinstance(ele["video"], str):
         video_reader_backend = get_video_reader_backend()
         try:
-            video, clip, sample_fps = VIDEO_READER_BACKENDS[video_reader_backend](ele)
+            video, full_video, sample_fps = VIDEO_READER_BACKENDS[video_reader_backend](ele)
         except Exception as e:
-            logger.warning(f"video_reader_backend {video_reader_backend} error, use torchvision as default, msg: {e}")
-            video, sample_fps = VIDEO_READER_BACKENDS["torchvision"](ele)
+            raise ValueError("video_reader_backend decord error, msg: {e}")
+            # logger.warning(f"video_reader_backend {video_reader_backend} error, use torchvision as default, msg: {e}")
+            # video, sample_fps = VIDEO_READER_BACKENDS["torchvision"](ele)
 
         nframes, _, height, width = video.shape
         min_pixels = ele.get("min_pixels", VIDEO_MIN_PIXELS)
@@ -333,25 +343,26 @@ def fetch_video(ele: dict, image_factor: int = IMAGE_FACTOR, return_video_sample
                 min_pixels=min_pixels,
                 max_pixels=max_pixels,
             )
-        # print(f'resized shape: {resized_height, resized_width}')
+        
+      
         video = transforms.functional.resize(
             video,
             [resized_height, resized_width],
             interpolation=InterpolationMode.BICUBIC,
             antialias=True,
         ).float()
-        # clip
-        if clip is not None:
-            clip = transforms.functional.resize(
-                clip,
+        # full video
+        if full_video is not None:
+            full_video = transforms.functional.resize(
+                full_video,
                 [resized_height, resized_width],
                 interpolation=InterpolationMode.BICUBIC,
                 antialias=True,
             ).float()
         
         if return_video_sample_fps:
-            return video, clip, sample_fps
-        return video, clip
+            return video, full_video, sample_fps
+        return video, full_video
     else:
         assert isinstance(ele["video"], (list, tuple))
         process_info = ele.copy()
@@ -391,31 +402,37 @@ def process_vision_info(
     return_video_kwargs: bool = False,
 ) -> tuple[list[Image.Image] | None, list[torch.Tensor | list[Image.Image]] | None, list[torch.Tensor | list[Image.Image]] | None, Optional[dict]]:
 
+    # print(conversations)
     vision_infos = extract_vision_info(conversations)
     ## Read images or videos
     image_inputs = []
     video_inputs = []
-    clip_inputs = []
+    full_video_inputs = []
     video_sample_fps_list = []
     for vision_info in vision_infos:
         if "image" in vision_info or "image_url" in vision_info:
             image_inputs.append(fetch_image(vision_info))
         elif "video" in vision_info:
-            video_input, clip_input, video_sample_fps = fetch_video(vision_info, return_video_sample_fps=True)
+            video_input, full_video_input, video_sample_fps = fetch_video(vision_info, return_video_sample_fps=True)
             video_sample_fps_list.append(video_sample_fps)
             video_inputs.append(video_input)
-            clip_inputs.append(clip_input)
+            # print(video_inputs[0].shape)
+            if full_video_input is not None:
+                full_video_inputs.append(full_video_input)
         else:
             raise ValueError("image, image_url or video should in content.")
     if len(image_inputs) == 0:
         image_inputs = None
     if len(video_inputs) == 0:
         video_inputs = None
-    if len(clip_inputs) == 0:
-        clip_inputs = None
+    # print(len(clip_inputs))
+    if len(full_video_inputs) == 0:
+        full_video_inputs = None
     if return_video_kwargs:
-        return image_inputs, video_inputs, clip_inputs, {'fps': video_sample_fps_list}
-    return image_inputs, video_inputs, clip_inputs
+        return image_inputs, video_inputs, full_video_inputs, {'fps': video_sample_fps_list}
+    
+
+    return image_inputs, video_inputs, full_video_inputs  
 
 
 if __name__ == "__main__":

@@ -167,6 +167,7 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
             self.processor,
             batch_timecodes # SurgVidLM
         )
+      
         if "token_type_ids" in mm_inputs:
             token_type_ids = mm_inputs.pop("token_type_ids")
             for i, feature in enumerate(features):
@@ -204,6 +205,7 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
             features["position_ids"] = torch.arange(seq_length).long().repeat(bsz, 1)
             return {"data": features, "input_ids": features["input_ids"], "labels": features["labels"]}
 
+        # print(features)
         return features
 
 
@@ -218,7 +220,9 @@ class SFTDataCollatorWith4DAttentionMask(MultiModalDataCollatorForSeq2Seq):
     compute_dtype: "torch.dtype" = torch.float32
 
     def __call__(self, features: Sequence[Dict[str, Any]]) -> Dict[str, "torch.Tensor"]:
+        
         features = super().__call__(features)
+        
         if self.block_diag_attn and self.attn_implementation != "flash_attention_2":
             features["attention_mask"] = prepare_4d_attention_mask(features["attention_mask"], self.compute_dtype)
 

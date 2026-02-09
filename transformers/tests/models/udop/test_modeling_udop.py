@@ -30,7 +30,6 @@ from transformers.testing_utils import (
 )
 from transformers.utils import cached_property
 
-from ...generation.test_utils import GenerationTesterMixin
 from ...test_configuration_common import ConfigTester
 from ...test_modeling_common import ModelTesterMixin, ids_tensor
 from ...test_pipeline_mixin import PipelineTesterMixin
@@ -266,7 +265,7 @@ class UdopModelTester:
 
 
 @require_torch
-class UdopModelTest(ModelTesterMixin, GenerationTesterMixin, PipelineTesterMixin, unittest.TestCase):
+class UdopModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase):
     all_model_classes = (
         (
             UdopModel,
@@ -330,13 +329,13 @@ class UdopModelTest(ModelTesterMixin, GenerationTesterMixin, PipelineTesterMixin
         pass
 
     @unittest.skip(
-        reason="This architecture seem to not compute gradients properly when using GC, check: https://github.com/huggingface/transformers/pull/27124"
+        reason="This architecure seem to not compute gradients properly when using GC, check: https://github.com/huggingface/transformers/pull/27124"
     )
     def test_training_gradient_checkpointing_use_reentrant(self):
         pass
 
     @unittest.skip(
-        reason="This architecture seem to not compute gradients properly when using GC, check: https://github.com/huggingface/transformers/pull/27124"
+        reason="This architecure seem to not compute gradients properly when using GC, check: https://github.com/huggingface/transformers/pull/27124"
     )
     def test_training_gradient_checkpointing_use_reentrant_false(self):
         pass
@@ -419,14 +418,6 @@ class UdopModelTest(ModelTesterMixin, GenerationTesterMixin, PipelineTesterMixin
         model_name = "microsoft/udop-large"
         model = UdopForConditionalGeneration.from_pretrained(model_name)
         self.assertIsNotNone(model)
-
-    @unittest.skip(reason="TODO: Fix me @joao")
-    def test_generate_with_head_masking(self):
-        pass
-
-    @unittest.skip(reason="TODO: Fix me @joao")
-    def test_generate_without_input_ids(self):
-        pass
 
 
 class UdopEncoderOnlyModelTester:

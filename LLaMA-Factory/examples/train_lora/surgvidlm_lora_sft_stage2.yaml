@@ -1,48 +1,61 @@
 ### model
 # NOTE: :when in stage 2 training, set model_name_or_path to the path of ckpt of stage 1 
-model_name_or_path: output/surgvidlm_lora_sft_stage1
+model_name_or_path: /mnt/data2/wgk/LLaMA-Factory/saves/model/merged/qwen2-vl-full-video
 image_max_pixels: 262144
 video_max_pixels: 16384
+video_fps: 2 #check
 trust_remote_code: true
 
 ### method
 stage: sft
 do_train: true
+
 finetuning_type: lora
 lora_rank: 8
 lora_target: all
 
 ### dataset
 dataset: svu-31k-video-clip
+
 template: surgvidlm
-cutoff_len: 10000
+cutoff_len: 30000
 max_samples: 30000 # for stage 2 training, set max_samples to 30000
 overwrite_cache: true
-preprocessing_num_workers: 32 # increase the number of workers to accelerate the preprocessing process
+preprocessing_num_workers: 16 # increase the number of workers to accelerate the preprocessing process
 dataloader_num_workers: 4
+preprocessing_batch_size: 256
+# padding_side: left
 
 ### output
-tokenized_path: saves/tokenizer_video_clip # it would take a long time to preprocess the dataset
-output_dir: saves/surgvidlm/lora/video_clip
-logging_steps: 10
-save_steps: 50
+tokenized_path: /mnt/data2/wgk/surgvidlm_project/LLaMA-Factory/saves/tokenizer_video_clip_stage2_2fps_change_prompt # it would take a long time to preprocess the dataset
+output_dir: /mnt/data2/wgk/surgvidlm_project/LLaMA-Factory/saves/lora/video_clip_stage2_2fps_change_prompt_new  #check
+logging_steps: 1
+save_strategy: "steps"
+save_steps: 142
 plot_loss: true
 overwrite_output_dir: true
 save_only_model: false
 
 ### train
 per_device_train_batch_size: 1 # increase the batch_size based on our resource
-gradient_accumulation_steps: 8
+gradient_accumulation_steps: 4
 learning_rate: 1.0e-4
-num_train_epochs: 3.0
+num_train_epochs: 1.0
 lr_scheduler_type: cosine
 warmup_ratio: 0.1
 bf16: true
 ddp_timeout: 180000000
 resume_from_checkpoint: null
+flash_attn: fa2
 
-## eval
-val_size: 0.1
-per_device_eval_batch_size: 1
-eval_strategy: steps
-eval_steps: 50
+
+# DeepSpeed 配置
+# deepspeed: /mnt/data2/wgk/surgvidlm_project/SurgVidLM/LLaMA-Factory/examples/deepspeed/ds_z2_config.json # 指定 DeepSpeed 配置文件路径
+# ddp_timeout: 9000
+
+# ## eval
+do_eval: false
+# eval_dataset: svu-31k-video-clip-eval
+# per_device_eval_batch_size: 2
+# eval_strategy: steps
+# eval_steps: 71
