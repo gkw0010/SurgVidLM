@@ -39,16 +39,25 @@ class SupervisedDatasetProcessor(DatasetProcessor):
         images: Sequence["ImageInput"],
         videos: Sequence["VideoInput"],
         audios: Sequence["AudioInput"],
+        timecodes: Sequence[int]=None
     ) -> Tuple[List[int], List[int]]:
-        messages = self.template.mm_plugin.process_messages(prompt + response, images, videos, audios, self.processor)
+        
+        if timecodes is not None:
+            messages = self.template.mm_plugin.process_messages(prompt + response, images, videos, audios, self.processor,timecodes=[timecodes]) # SurgVidLM
+        else:
+            messages = self.template.mm_plugin.process_messages(prompt + response, images, videos, audios, self.processor)
+        
+        # print(messages)
         input_ids, labels = self.template.mm_plugin.process_token_ids(
             [], [], images, videos, audios, self.tokenizer, self.processor
         )
+        # print(input_ids)
         encoded_pairs = self.template.encode_multiturn(self.tokenizer, messages, system, tools)
         total_length = len(input_ids) + (1 if self.template.efficient_eos else 0)
         if self.data_args.mask_history:
             encoded_pairs = encoded_pairs[::-1]  # high priority for last turns
 
+        # print(encoded_pairs)
         for turn_idx, (source_ids, target_ids) in enumerate(encoded_pairs):
             if total_length >= self.data_args.cutoff_len:
                 break
@@ -89,6 +98,7 @@ class SupervisedDatasetProcessor(DatasetProcessor):
         # build inputs with format `<bos> X Y <eos>` and labels with format `<ignore> ... <ignore> Y <eos>`
         # for multiturn examples, we only mask the prompt part in each prompt-response pair.
         model_inputs = defaultdict(list)
+        # print(examples)
         for i in range(len(examples["_prompt"])):
             if len(examples["_prompt"][i]) % 2 != 1 or len(examples["_response"][i]) != 1:
                 logger.warning_rank0(
@@ -104,6 +114,8 @@ class SupervisedDatasetProcessor(DatasetProcessor):
                 images=examples["_images"][i] or [],
                 videos=examples["_videos"][i] or [],
                 audios=examples["_audios"][i] or [],
+                # SurgVidLM
+                timecodes=examples["_timecodes"][i] or [],
             )
             model_inputs["input_ids"].append(input_ids)
             model_inputs["attention_mask"].append([1] * len(input_ids))
@@ -134,6 +146,8 @@ class PackedSupervisedDatasetProcessor(SupervisedDatasetProcessor):
         lengths = []
         length2indexes = defaultdict(list)
         for i in range(len(examples["_prompt"])):
+            # print("example的列")
+            # print(examples)
             if len(examples["_prompt"][i]) % 2 != 1 or len(examples["_response"][i]) != 1:
                 logger.warning_rank0(
                     "Dropped invalid example: {}".format(examples["_prompt"][i] + examples["_response"][i])

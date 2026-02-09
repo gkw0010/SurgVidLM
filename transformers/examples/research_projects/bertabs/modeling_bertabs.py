@@ -390,7 +390,7 @@ class MultiHeadedAttention(nn.Module):
     :cite:`DBLP:journals/corr/VaswaniSPUJGKP17`.
 
     Similar to standard `dot` attention but uses
-    multiple attention distributions simultaneously
+    multiple attention distributions simulataneously
     to select relevant items.
 
     .. mermaid::

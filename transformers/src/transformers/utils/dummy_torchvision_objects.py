@@ -58,13 +58,6 @@ class DetrImageProcessorFast(metaclass=DummyObject):
         requires_backends(self, ["torchvision"])
 
 
-class GotOcr2ImageProcessorFast(metaclass=DummyObject):
-    _backends = ["torchvision"]
-
-    def __init__(self, *args, **kwargs):
-        requires_backends(self, ["torchvision"])
-
-
 class LlavaImageProcessorFast(metaclass=DummyObject):
     _backends = ["torchvision"]
 
@@ -108,13 +101,6 @@ class RTDetrImageProcessorFast(metaclass=DummyObject):
 
 
 class SiglipImageProcessorFast(metaclass=DummyObject):
-    _backends = ["torchvision"]
-
-    def __init__(self, *args, **kwargs):
-        requires_backends(self, ["torchvision"])
-
-
-class Siglip2ImageProcessorFast(metaclass=DummyObject):
     _backends = ["torchvision"]
 
     def __init__(self, *args, **kwargs):

@@ -70,7 +70,7 @@ class Qwen2VLProcessor(ProcessorMixin):
         images: ImageInput = None,
         text: Union[TextInput, PreTokenizedInput, List[TextInput], List[PreTokenizedInput]] = None,
         videos: VideoInput = None,
-        clips: VideoInput = None, # SurgVidLM
+        full_videos: VideoInput = None, # SurgVidLM
         **kwargs: Unpack[Qwen2VLProcessorKwargs],
     ) -> BatchFeature:
         """
@@ -123,8 +123,8 @@ class Qwen2VLProcessor(ProcessorMixin):
 
         if videos is not None:
             # SurgVidLM
-            if clips is not None:
-                videos_inputs = self.image_processor(images=None, videos=videos, clips=clips, **output_kwargs["videos_kwargs"])
+            if full_videos is not None:
+                videos_inputs = self.image_processor(images=None, videos=videos, full_videos=full_videos, **output_kwargs["videos_kwargs"])
             else:
                 videos_inputs = self.image_processor(images=None, videos=videos, **output_kwargs["videos_kwargs"])
             video_grid_thw = videos_inputs["video_grid_thw"]

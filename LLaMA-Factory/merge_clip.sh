@@ -1,0 +1,1 @@
+CUDA_VISIBLE_DEVICES=4,5 DISABLE_VERSION_CHECK=1 llamafactory-cli export /mnt/data2/wgk/surgvidlm_project/LLaMA-Factory/examples/merge_lora/surgvidlm_lora_sft_stage2.yaml

@@ -1,9 +1,6 @@
-import time
-
 import torch
-
-from transformers import AutoModel, AutoTokenizer, pipeline
-
+from transformers import pipeline, AutoTokenizer, AutoModel, AutoModelForMaskedLM
+import time
 
 test_sentence = 'Do you [MASK] the muffin man?'
 

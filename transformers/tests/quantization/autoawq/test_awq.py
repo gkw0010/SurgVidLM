@@ -19,11 +19,9 @@ import unittest
 
 from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer, AwqConfig, OPTForCausalLM
 from transformers.testing_utils import (
-    backend_empty_cache,
     require_accelerate,
     require_auto_awq,
     require_intel_extension_for_pytorch,
-    require_torch_accelerator,
     require_torch_gpu,
     require_torch_multi_gpu,
     slow,
@@ -39,9 +37,8 @@ if is_accelerate_available():
     from accelerate import init_empty_weights
 
 
-@require_torch_accelerator
+@require_torch_gpu
 class AwqConfigTest(unittest.TestCase):
-    @require_torch_gpu
     def test_wrong_backend(self):
         """
         Simple test that checks if a user passes a wrong backend an error is raised
@@ -93,7 +90,7 @@ class AwqConfigTest(unittest.TestCase):
 
 
 @slow
-@require_torch_accelerator
+@require_torch_gpu
 @require_auto_awq
 @require_accelerate
 class AwqTest(unittest.TestCase):
@@ -110,7 +107,7 @@ class AwqTest(unittest.TestCase):
         "Hello my name is Katie and I am a 20 year old student from the UK. I am currently studying for a degree in English Literature and History at the University of York. I am a very out",
         "Hello my name is Katie and I am a 20 year old student from the UK. I am currently studying for a degree in English Literature and History at the University of York. I am a very creative",
     ]
-    device_map = torch_device
+    device_map = "cuda"
 
     # called only once for all test in this class
     @classmethod
@@ -123,7 +120,7 @@ class AwqTest(unittest.TestCase):
 
     def tearDown(self):
         gc.collect()
-        backend_empty_cache(torch_device)
+        torch.cuda.empty_cache()
         gc.collect()
 
     def test_quantized_model_conversion(self):
@@ -478,7 +475,7 @@ class AwqFusedTest(unittest.TestCase):
 
 
 @slow
-@require_torch_accelerator
+@require_torch_gpu
 @require_auto_awq
 @require_accelerate
 class AwqScaleTest(unittest.TestCase):
@@ -491,7 +488,7 @@ class AwqScaleTest(unittest.TestCase):
         Simple test that checks if the scales have been replaced in the quantized model
         """
         quantized_model = AutoModelForCausalLM.from_pretrained(
-            "TechxGenus/starcoder2-3b-AWQ", torch_dtype=torch.float16, device_map=torch_device
+            "TechxGenus/starcoder2-3b-AWQ", torch_dtype=torch.float16, device_map="cuda"
         )
         self.assertTrue(isinstance(quantized_model.model.layers[0].mlp.act, ScaledActivation))
 

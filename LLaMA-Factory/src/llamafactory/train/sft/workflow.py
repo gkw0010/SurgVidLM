@@ -85,6 +85,8 @@ def run_sft(
     gen_kwargs["logits_processor"] = get_logits_processor()
 
     # Initialize our Trainer
+    print("训练参数:")
+    print(training_args,finetuning_args,gen_kwargs)
     trainer = CustomSeq2SeqTrainer(
         model=model,
         args=training_args,

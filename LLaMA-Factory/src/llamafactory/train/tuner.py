@@ -50,9 +50,15 @@ logger = logging.get_logger(__name__)
 
 def _training_function(config: Dict[str, Any]) -> None:
     args = config.get("args")
+    print(args)
+    if "video_fps" in args:
+        print("视频fps:",args['video_fps'])
+    else:
+        print("使用默认fps")
+    # print("tokenize保存路径:",args['tokenized_path'])
     callbacks: List[Any] = config.get("callbacks")
     model_args, data_args, training_args, finetuning_args, generating_args = get_train_args(args)
-
+    # print(data_args)
     callbacks.append(LogCallback())
     if finetuning_args.pissa_convert:
         callbacks.append(PissaConvertCallback())

@@ -241,8 +241,6 @@ if is_accelerate_available():
     )
 
     DATA_SAMPLERS = [RandomSampler]
-    if version.parse(accelerate_version) > version.parse("1.3.0"):
-        from accelerate.utils import TorchTensorParallelPlugin
     if version.parse(accelerate_version) > version.parse("0.23.0"):
         from accelerate.data_loader import SeedableRandomSampler
 
@@ -1060,9 +1058,7 @@ class Trainer:
                 )
             else:
                 lengths = None
-            model_input_name = (
-                self.processing_class.model_input_names[0] if self.processing_class is not None else None
-            )
+            model_input_name = self.tokenizer.model_input_names[0] if self.tokenizer is not None else None
             return LengthGroupedSampler(
                 self.args.eval_batch_size,
                 dataset=eval_dataset,
@@ -2180,12 +2176,7 @@ class Trainer:
 
         # do_train is not a reliable argument, as it might not be set and .train() still called, so
         # the following is a workaround:
-        if (
-            (args.fp16_full_eval or args.bf16_full_eval)
-            and not args.do_train
-            and not self.is_model_parallel
-            and self.model_init is None
-        ):
+        if (args.fp16_full_eval or args.bf16_full_eval) and not args.do_train and not self.is_model_parallel:
             self._move_model_to_device(self.model, args.device)
 
         if "model_path" in kwargs:
@@ -2266,7 +2257,7 @@ class Trainer:
                 (self.model_wrapped,) = release_memory(self.model_wrapped)
                 self.model_wrapped = self.model
 
-                # Check for DeepSpeed *after* the initial pass and modify the config
+                # Check for DeepSpeed *after* the intial pass and modify the config
                 if self.is_deepspeed_enabled:
                     # Temporarily unset `self.args.train_batch_size`
                     original_bs = self.args.per_device_train_batch_size
@@ -2452,11 +2443,7 @@ class Trainer:
                 )
 
         # Update the references
-        for attr in ("model", "optimizer", "lr_scheduler"):
-            setattr(self.callback_handler, attr, getattr(self, attr))
-        self.callback_handler.train_dataloader = train_dataloader
-
-        self.state.init_training_references(self, max_steps, num_train_epochs, trial)
+        self.state.init_training_references(self, train_dataloader, max_steps, num_train_epochs, trial)
 
         # tr_loss is a tensor to avoid synchronization of TPUs through .item()
         tr_loss = torch.tensor(0.0).to(args.device)
@@ -2577,6 +2564,30 @@ class Trainer:
                     self.current_flos += float(self.floating_point_ops(inputs))
 
                     if do_sync_step:
+
+                        # A: backward 之后，step 之前，检查 gate 的梯度
+                        # mod = self.model_wrapped if hasattr(self, "model_wrapped") else self.model
+                        # try:
+                        #     gate_param = getattr(unwrap_model(mod), "gate_logit", None)
+                        # except Exception:
+                        #     gate_param = getattr(mod, "gate_logit", None)
+                        # if gate_param is not None:
+                        #     grad = gate_param.grad
+                        #     if grad is None:
+                        #         print("[GateDebug] gate_logit.grad is None (this step). Did forward use gate? Is param in optimizer?")
+                        #     else:
+                        #         print("[GateDebug] grad:", float(grad.detach().float().cpu()))
+                        # else:
+                        #     print("[GateDebug] gate_logit not found on model")
+
+
+                        # base = unwrap_model(self.model_wrapped)
+                        # gate_param = getattr(base, "gate_logit", None)
+                        # print("[GateDebug] same object:", id(gate_param) == 128228500536624)
+                        # print("[GateDebug] requires_grad:", gate_param.requires_grad)
+                        # print("[GateDebug] in_optim:", any(gate_param is p for g in self.optimizer.param_groups for p in g["params"]))
+                        # print("[GateDebug] grad is None:", gate_param.grad is None)
+
                         # Since we perform prefetching, we need to manually set sync_gradients to True
                         self.accelerator.gradient_state._set_sync_gradients(True)
 
@@ -2826,7 +2837,7 @@ class Trainer:
                     # Checkpoint must have been saved with the old smp api.
                     if hasattr(self.args, "fp16") and self.args.fp16 is True:
                         logger.warning(
-                            "Enabling FP16 and loading from smp < 1.10 checkpoint together is not supported."
+                            "Enabling FP16 and loading from smp < 1.10 checkpoint together is not suppported."
                         )
                     state_dict = torch.load(
                         weights_file,
@@ -4091,7 +4102,7 @@ class Trainer:
             A dictionary containing the evaluation loss and the potential metrics computed from the predictions. The
             dictionary also contains the epoch number which comes from the training state.
         """
-        # handle multiple eval datasets
+        # handle multipe eval datasets
         override = eval_dataset is not None
         eval_dataset = eval_dataset if override else self.eval_dataset
         if isinstance(eval_dataset, dict):
@@ -5107,14 +5118,6 @@ class Trainer:
             args["dataloader_config"] = dataloader_config
         else:
             args.update(accelerator_config)
-        # tp is initialized at Accelerator init phase so
-        # args should be prepared here
-        if self.args.tp_size > 1:
-            self.is_tp_enabled = True
-            if version.parse(accelerate_version) > version.parse("1.3.0"):
-                args["torch_tp_plugin"] = TorchTensorParallelPlugin(tp_size=self.args.tp_size)
-            else:
-                raise ValueError("Requires accelerate>1.3.0 to use Tensor Parallelism.")
 
         # create accelerator object
         self.accelerator = Accelerator(**args)
@@ -5129,7 +5132,7 @@ class Trainer:
         # deepspeed and accelerate flags covering both trainer args and accelerate launcher
         self.is_deepspeed_enabled = getattr(self.accelerator.state, "deepspeed_plugin", None) is not None
         self.is_fsdp_enabled = getattr(self.accelerator.state, "fsdp_plugin", None) is not None
-        self.is_tp_enabled = getattr(self.accelerator.state, "torch_tp_plugin", None) is not None
+
         # post accelerator creation setup
         if self.is_fsdp_enabled:
             fsdp_plugin = self.accelerator.state.fsdp_plugin

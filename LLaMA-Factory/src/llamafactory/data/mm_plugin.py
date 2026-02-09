@@ -1214,22 +1214,27 @@ class SurgVidLMPlugin(BasePlugin):
         images: Sequence["ImageInput"],
         videos: Sequence["VideoInput"],
         audios: Sequence["AudioInput"],
-        processor: Optional["ProcessorMixin"],
+        processor: Optional["ProcessorMixin"], 
+        timecodes: Sequence[int]=None, # SurgVidLM
     ) -> List[Dict[str, str]]:
         self._validate_input(processor, images, videos, audios)
-        num_image_tokens, num_video_tokens = 0, 0
+        num_image_tokens, num_video_tokens, num_clip_tokens = 0, 0, 0 #surgvidlm
         messages = deepcopy(messages)
         image_processor: "BaseImageProcessor" = getattr(processor, "image_processor")
 
+        # print(videos)
         merge_length: int = getattr(image_processor, "merge_size") ** 2
         if self.expand_mm_tokens:
-            mm_inputs = self._get_mm_inputs(images, videos, audios, processor)
+            # print("use expand_mm_tokens")
+            mm_inputs = self._get_mm_inputs(images, videos, audios, processor,timecodes)
+            
             image_grid_thw = mm_inputs.get("image_grid_thw", [])
-            video_grid_thw = mm_inputs.get("video_grid_thw", [])
+            video_grid_thw = mm_inputs.get("video_grid_thw", []) #clip的grid
+            full_video_grid_thw = mm_inputs.get("full_video_grid_thw", []) #full video的grid
         else:
             image_grid_thw = [None] * len(images)
             video_grid_thw = [None] * len(videos)
-
+            
         for message in messages:
             content = message["content"]
             while IMAGE_PLACEHOLDER in content:
@@ -1242,23 +1247,43 @@ class SurgVidLMPlugin(BasePlugin):
                 )
                 num_image_tokens += 1
 
-            while VIDEO_PLACEHOLDER in content:
-                if num_video_tokens >= len(video_grid_thw):
-                    raise ValueError(f"`len(videos)` is less than the number of {VIDEO_PLACEHOLDER} tokens.")
+            #SurgVidLM
+            if timecodes is not None:
+                while VIDEO_PLACEHOLDER in content:
+                    if num_clip_tokens >= len(video_grid_thw):
+                        raise ValueError(f"`len(clip)` is less than the number of {VIDEO_PLACEHOLDER} tokens.")
 
-                video_seqlen = video_grid_thw[num_video_tokens].prod() // merge_length if self.expand_mm_tokens else 1
-                content = content.replace(
-                    VIDEO_PLACEHOLDER, f"<|vision_start|>{self.video_token * video_seqlen}<|vision_end|>", 1
-                )
-                num_video_tokens += 1
+                    clip_seqlen = video_grid_thw[num_clip_tokens].prod() // merge_length if self.expand_mm_tokens else 1
+                    # print("tokenize获取clip长度:",mm_inputs['pixel_values_videos'].shape, "  获取video:",mm_inputs['pixel_values_clips'].shape,"  clip序列长度:",clip_seqlen)
+                    content = content.replace(
+                        VIDEO_PLACEHOLDER, f"<|vision_start|>{self.video_token * clip_seqlen}<|vision_end|>", 1
+                    )
+                    num_clip_tokens += 1
+            # SurgVidLM
+
+            else:
+                print("video encode")
+                while VIDEO_PLACEHOLDER in content:
+                    if num_video_tokens >= len(video_grid_thw):
+                        raise ValueError(f"`len(videos)` is less than the number of {VIDEO_PLACEHOLDER} tokens.")
+
+                    video_seqlen = video_grid_thw[num_video_tokens].prod() // merge_length if self.expand_mm_tokens else 1
+                    content = content.replace(
+                        VIDEO_PLACEHOLDER, f"<|vision_start|>{self.video_token * video_seqlen}<|vision_end|>", 1
+                    )
+                    num_video_tokens += 1
 
             message["content"] = content
 
         if len(images) != num_image_tokens:
             raise ValueError(f"The number of images does not match the number of {IMAGE_PLACEHOLDER} tokens.")
 
-        if len(videos) != num_video_tokens:
-            raise ValueError(f"The number of videos does not match the number of {VIDEO_PLACEHOLDER} tokens.")
+        #surgvidlm
+        if timecodes is None:        
+            if len(videos) != num_video_tokens:
+                raise ValueError(f"The number of videos does not match the number of {VIDEO_PLACEHOLDER} tokens.")
+    
+
 
         return messages
 
@@ -1276,11 +1301,13 @@ class SurgVidLMPlugin(BasePlugin):
         timecodes: Sequence[int]
     ) -> Dict[str, Union[List[int], "torch.Tensor"]]:
         self._validate_input(processor, images, videos, audios)
+        
         # stage 1 training
         if timecodes[0] is None:
             mm_inputs = self._get_mm_inputs(images, videos, audios, processor, timecodes=None)
         # stage 2 training
         else:
+            # print("有timecode",timecodes)
             mm_inputs = self._get_mm_inputs(images, videos, audios, processor, timecodes) 
 
         return mm_inputs
@@ -1292,7 +1319,7 @@ class SurgVidLMPlugin(BasePlugin):
         videos: Sequence["VideoInput"],
         audios: Sequence["AudioInput"],
         processor: "ProcessorMixin",
-        timecodes: Sequence[int] = None
+        timecodes: Sequence[int] = None # SurgVidLM
     ) -> Dict[str, "torch.Tensor"]:
         r"""
         Processes visual inputs.
@@ -1308,7 +1335,10 @@ class SurgVidLMPlugin(BasePlugin):
         """
         image_processor: "BaseImageProcessor" = getattr(processor, "image_processor")
         video_processor: "BaseImageProcessor" = getattr(processor, "video_processor", image_processor)
+        # print(video_processor)
         input_dict = {"images": None}  # default key
+
+        # print("tokenize阶段传入的timecode:",timecodes)
         if len(images) != 0:
             images = self._regularize_images(
                 images,
@@ -1318,17 +1348,26 @@ class SurgVidLMPlugin(BasePlugin):
             mm_inputs.update(image_processor(images, return_tensors="pt"))
 
         if len(videos) != 0:
+            # print("视频不为0")
+            # print("_get_mm_inputs的timecode:",timecodes)
             videos, clips = self._regularize_videos(
                 videos,
                 timecodes=timecodes,
                 image_max_pixels=getattr(processor, "video_resolution", 224 * 224), # 224 * 224
                 image_min_pixels=getattr(processor, "video_min_pixels", 16 * 16),
-                video_fps=getattr(processor, "video_fps", 2.0),
-                video_maxlen=getattr(processor, "video_maxlen", 128), # 128
+                video_fps=getattr(processor, "video_fps", 2.0),   #默认是2fps
+                video_maxlen=getattr(processor, "video_maxlen", 128), # 128  视频基本上都是均匀取128帧
             )
-            input_dict["videos"] = videos
+
+            #实际上这里面的video对应clip, clip对应原来的full video的token
+            videos_final=clips
+            clips_final=videos
+
+            #check
+            # print("视频采样: ", len(videos_final[0]), "clip采样:", len(clips_final[0]))
+            input_dict["videos"] = videos_final
             if clips is not None:
-                input_dict["clips"] = clips
+                input_dict["clips"] = clips_final
                 
         mm_inputs = {}
         if image_processor != video_processor:
@@ -1339,8 +1378,10 @@ class SurgVidLMPlugin(BasePlugin):
             if input_dict.get("clips") is not None:
                 mm_inputs.update(video_processor(input_dict["clips"], return_tensors="pt"))
         elif input_dict.get("images") is not None or input_dict.get("videos") is not None:  # same processor (qwen2-vl)
+            # print(input_dict.keys())
             mm_inputs.update(image_processor(**input_dict, return_tensors="pt"))
-
+        
+        # print(mm_inputs)
         return mm_inputs
     
     @override
@@ -1350,29 +1391,41 @@ class SurgVidLMPlugin(BasePlugin):
             r"""
             Computes video sample indices and number of frames according to fps.
             """
+            # print("视频的fps为:",video_fps)
+            #全视频的采样频率
+            full_video_maxlen=128
             total_frames = len(video_stream)
             if total_frames == 0:  # infinite video
-                return np.linspace(0, video_maxlen - 1, video_maxlen).astype(np.int32)
+                return np.linspace(0, full_video_maxlen - 1, full_video_maxlen).astype(np.int32)
 
             duration = total_frames // video_stream.get_avg_fps()
             sample_frames = math.floor(float(duration) * video_fps)
-            sample_frames = min(total_frames, video_maxlen, sample_frames)
+            sample_frames = min(total_frames, full_video_maxlen, sample_frames)
             return np.linspace(0, total_frames - 1, sample_frames).astype(np.int32), sample_frames
         
     @override
     def _regularize_videos(self, videos: Sequence["VideoInput"], timecodes=None, **kwargs) -> List[List["ImageObject"]]:
         r"""
         Get full video frames and clip frames by using DECORD to read video
+        逻辑: 
+
         """
-        full_results = []
+        full_video_results = []
         clip_results = [] if timecodes is not None else None
+
+        sample_fps=kwargs.get("video_fps",None)
+        video_maxlen=kwargs.get("video_maxlen",None)
+
         for i in range(len(videos)):
             video = videos[i]
             timecode = timecodes[i] if timecodes is not None else None
-            vr = decord.VideoReader(video)
+            vr = decord.VideoReader(video) 
             video_name = video.split('/')[-1]
             total_frames = len(vr)
-            sample_indices, sample_frames = self._get_video_sample_indices(vr, **kwargs)
+            
+       
+            sample_indices, sample_frames = self._get_video_sample_indices(vr, **kwargs) #获取video的sample frames (基本都到了max_len)
+            
             frames: List["ImageObject"] = []
            
             frames = vr.get_batch(sample_indices).asnumpy() 
@@ -1386,9 +1439,11 @@ class SurgVidLMPlugin(BasePlugin):
                 pil_frames.append(pil_frames[-1])
                 
             frames = self._regularize_images(pil_frames, **kwargs)
-            full_results.append(frames)
+            full_video_results.append(frames)
+            
             
             if timecode is not None:
+                # print("clip timecode:",timecode)
                 # sub clip
                 start_second, end_second = timecode
                 if end_second == -1:
@@ -1396,10 +1451,17 @@ class SurgVidLMPlugin(BasePlugin):
                 if end_second > total_frames // vr.get_avg_fps():
                     print(f"Total duration: {total_frames // vr.get_avg_fps()}s, {video_name} have wrong end_second({end_second}).")
                     end_second = total_frames // vr.get_avg_fps() - 1
-                sub_frames = self._process_clip_frames(video_name, vr, start_second, end_second, sample_frames, **kwargs)
-                clip_results.append(sub_frames)
+                
+                # clip_sample_frames=0  
+                duration=end_second-start_second 
+                clip_sample_frames = math.floor(float(duration) * sample_fps) 
+                clip_sample_frames = min(total_frames, video_maxlen, clip_sample_frames)
+             
 
-        return full_results, clip_results
+                sub_frames = self._process_clip_frames(video_name, vr, start_second, end_second, clip_sample_frames, **kwargs) #clip有单独的采样帧数
+                clip_results.append(sub_frames)
+      
+        return full_video_results, clip_results
     
     def _process_clip_frames(
         self, video_name, vr, start_second, end_second, sample_frames, **kwargs
@@ -1410,8 +1472,9 @@ class SurgVidLMPlugin(BasePlugin):
         
         if sample_frames <= clip_tot_frames:
             clip_idx = torch.linspace(clip_start_frame_idx, clip_end_frame_idx - 1, sample_frames).round().long()
+      
         else:
-            print(f"{video_name}: full video sample frames({sample_frames}) is larger than total clip frames({clip_tot_frames}) [{start_second},{end_second}].")
+            print(f"{video_name}: video clip sample frames({sample_frames}) is larger than total clip frames({clip_tot_frames}) [{start_second},{end_second}].")
             clip_idx = torch.linspace(clip_start_frame_idx, clip_end_frame_idx - 1, clip_tot_frames).round().long()
             supplement_idx = torch.tensor([clip_end_frame_idx] * (sample_frames - clip_tot_frames)).long()
             clip_idx = torch.cat([clip_idx, supplement_idx])

@@ -255,6 +255,7 @@ def _get_preprocessed_dataset(
             desc="Running tokenizer on dataset",
         )
 
+    print("batch size:",data_args.preprocessing_batch_size)
     dataset = dataset.map(
         dataset_processor.preprocess_dataset,
         batched=True,

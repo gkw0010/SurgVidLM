@@ -1427,7 +1427,10 @@ class Qwen2VLForConditionalGeneration(Qwen2VLPreTrainedModel, GenerationMixin):
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
         self.rope_deltas = None  # cache rope_deltas here
 
-        self.scale = 1.0 / torch.sqrt(torch.tensor(config.hidden_size, dtype=torch.bfloat16))
+        # self.scale = 1.0 / torch.sqrt(torch.tensor(config.hidden_size, dtype=torch.bfloat16))
+        self.scale = 1.0 / (config.hidden_size ** 0.5) #不用tensor
+        # self.gate_logit = nn.Parameter(torch.zeros(1))  #sigmoid有界门控 初始值为0.5
+        # self.gate=0.5
         # Initialize weights and apply final processing
         self.post_init()
 
@@ -1619,8 +1622,8 @@ class Qwen2VLForConditionalGeneration(Qwen2VLPreTrainedModel, GenerationMixin):
         rope_deltas: Optional[torch.LongTensor] = None,
         cache_position: Optional[torch.LongTensor] = None,
         # SurgVidLM
-        pixel_values_clips: Optional[torch.FloatTensor] = None,
-        clip_grid_thw: Optional[torch.LongTensor] = None
+        pixel_values_full_videos: Optional[torch.FloatTensor] = None,
+        full_video_grid_thw: Optional[torch.LongTensor] = None
     ) -> Union[Tuple, Qwen2VLCausalLMOutputWithPast]:
         r"""
             labels (`torch.LongTensor` of shape `(batch_size, sequence_length)`, *optional*):
@@ -1660,13 +1663,16 @@ class Qwen2VLForConditionalGeneration(Qwen2VLPreTrainedModel, GenerationMixin):
         >>> tokenizer.batch_decode(generate_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
         "The image shows a street scene with a red stop sign in the foreground. In the background, there is a large red gate with Chinese characters ..."
         ```"""
-
+        # print("执行forward")
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
             output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
         )
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
+        # print(input_ids)
+        # print(attention_mask)
+        # print(len(input_ids[0]),len(attention_mask[0]),attention_mask[0].sum())
         if inputs_embeds is None:
             inputs_embeds = self.model.embed_tokens(input_ids)
             if pixel_values is not None:
@@ -1690,17 +1696,27 @@ class Qwen2VLForConditionalGeneration(Qwen2VLPreTrainedModel, GenerationMixin):
             if pixel_values_videos is not None:
                 pixel_values_videos = pixel_values_videos.type(self.visual.get_dtype())
                 video_embeds = self.visual(pixel_values_videos, grid_thw=video_grid_thw)
+
                 # SurgVidLM
-                if pixel_values_clips is not None:
-                    pixel_values_clips = pixel_values_clips.type(self.visual.get_dtype())
-                    clip_embeds = self.visual(pixel_values_clips, grid_thw=clip_grid_thw) 
-                    # conduct mix attention
-                    score = F.softmax((video_embeds @ clip_embeds.T) * self.scale, dim=-1)
-                    attn = score @ clip_embeds
-                    assert attn.shape == video_embeds.shape, f'Mixed feature shape {attn.shape} is different from video embeds shape {video_embeds.shape}.'
-                    video_embeds = attn
+                if pixel_values_full_videos is not None:
+                    # print("执行mixed attention")
+                    pixel_values_full_videos = pixel_values_full_videos.type(self.visual.get_dtype())
+                    full_video_embeds = self.visual(pixel_values_full_videos, grid_thw=full_video_grid_thw) 
                     
+                    D = video_embeds.size(-1)
+                    #不加layer norm
+                    q = video_embeds  # [Nc, D] clip token
+                    k = full_video_embeds # [Nf, D] full video token
+                    v = full_video_embeds  # [Nf, D]           
+                    attn_score = F.softmax((q @ k.T) * self.scale, dim=-1) #softmax(Xc*Xf.T）
+                    out = attn_score @ v  #softmax(Xc*Xf.T）*Xf
+                    
+                    video_embeds = out + video_embeds  #residual connection # softmax(Xc*Xf.T）*Xf+Xc
+                   
+                
+                
                 n_video_tokens = (input_ids == self.config.video_token_id).sum().item()
+                
                 n_video_features = video_embeds.shape[0]
                 if n_video_tokens != n_video_features:
                     raise ValueError(
@@ -1800,8 +1816,8 @@ class Qwen2VLForConditionalGeneration(Qwen2VLPreTrainedModel, GenerationMixin):
         image_grid_thw=None,
         video_grid_thw=None,
         # SurgVidLM
-        pixel_values_clips=None,
-        clip_grid_thw=None,
+        pixel_values_full_videos=None,
+        full_video_grid_thw=None,
         **kwargs,
     ):
         # Overwritten -- in specific circumstances we don't want to forward image inputs to the model
@@ -1815,10 +1831,10 @@ class Qwen2VLForConditionalGeneration(Qwen2VLPreTrainedModel, GenerationMixin):
             position_ids=position_ids,
             pixel_values=pixel_values,
             pixel_values_videos=pixel_values_videos,
-            pixel_values_clips=pixel_values_clips,
+            pixel_values_full_videos=pixel_values_full_videos, #Surgvidlm
             image_grid_thw=image_grid_thw,
             video_grid_thw=video_grid_thw,
-            clip_grid_thw=clip_grid_thw,
+            full_video_grid_thw=full_video_grid_thw, #Surgvidlm
             use_cache=use_cache,
             **kwargs,
         )

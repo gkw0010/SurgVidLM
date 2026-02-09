@@ -112,6 +112,7 @@ class Qwen2VLImageProcessorFast(BaseImageProcessorFast):
 
     def __init__(self, **kwargs: Unpack[Qwen2VLFastImageProcessorInitKwargs]):
         super().__init__(**kwargs)
+        print("fast被初始化了")
 
     def _preprocess(
         self,
@@ -231,6 +232,7 @@ class Qwen2VLImageProcessorFast(BaseImageProcessorFast):
         self,
         images: ImageInput,
         videos: VideoInput = None,
+        full_videos: VideoInput = None, #surgvidlm
         do_resize: bool = None,
         size: Dict[str, int] = None,
         resample: Optional[Union["PILImageResampling", "F.InterpolationMode"]] = None,
@@ -380,6 +382,32 @@ class Qwen2VLImageProcessorFast(BaseImageProcessorFast):
             pixel_values = torch.stack(pixel_values)
             vision_grid_thws = torch.tensor(vision_grid_thws)
             data = {"pixel_values_videos": pixel_values, "video_grid_thw": vision_grid_thws}
+        
+        if full_videos is not None:
+            # print("image_processing_qwen2vl_fast full_video shape:",len(full_videos[0]),"video shape:",len(videos[0]))
+            full_videos_pixel_values, full_videos_vision_grid_thws = [], []
+            for images in full_videos:
+                patches, video_grid_thw = self._preprocess(
+                    images,
+                    do_resize=do_resize,
+                    size=size,
+                    interpolation=interpolation,
+                    do_rescale=do_rescale,
+                    rescale_factor=rescale_factor,
+                    do_normalize=do_normalize,
+                    image_mean=image_mean,
+                    image_std=image_std,
+                    do_convert_rgb=do_convert_rgb,
+                    input_data_format=input_data_format,
+                    device=device,
+                )
+                full_videos_pixel_values.extend(patches)
+                full_videos_vision_grid_thws.append(video_grid_thw)
+            full_videos_pixel_values = torch.stack(full_videos_pixel_values)
+            full_videos_vision_grid_thws = torch.tensor(full_videos_vision_grid_thws)
+            data["pixel_values_full_videos"] = full_videos_pixel_values
+            data["full_video_grid_thw"] = full_videos_vision_grid_thws
+        
 
         return BatchFeature(data=data, tensor_type=return_tensors)
 

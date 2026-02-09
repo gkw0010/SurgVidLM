@@ -124,7 +124,7 @@ class ImageTextToTextPipelineTests(unittest.TestCase):
                 ],
             }
         ]
-        outputs = pipe([image_ny, image_chicago], text=messages, return_full_text=False, max_new_tokens=10)
+        outputs = pipe([image_ny, image_chicago], text=messages)
         self.assertEqual(
             outputs,
             [
@@ -139,7 +139,20 @@ class ImageTextToTextPipelineTests(unittest.TestCase):
                             ],
                         }
                     ],
-                    "generated_text": "The first image shows a statue of Liberty in the",
+                    "generated_text": [
+                        {
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": "What’s the difference between these two images?"},
+                                {"type": "image"},
+                                {"type": "image"},
+                            ],
+                        },
+                        {
+                            "role": "assistant",
+                            "content": "The first image shows a statue of the Statue of Liberty in the foreground, while the second image shows",
+                        },
+                    ],
                 }
             ],
         )
@@ -166,7 +179,7 @@ class ImageTextToTextPipelineTests(unittest.TestCase):
                 ],
             },
         ]
-        outputs = pipe(text=messages, max_new_tokens=10)
+        outputs = pipe(text=messages)
         self.assertEqual(
             outputs,
             [
@@ -200,7 +213,7 @@ class ImageTextToTextPipelineTests(unittest.TestCase):
                             "content": [
                                 {
                                     "type": "text",
-                                    "text": "There is a dog and a person in the image. The dog is sitting",
+                                    "text": "There is a dog and a person in the image. The dog is sitting on the sand, and the person is sitting on",
                                 }
                             ],
                         },
@@ -225,7 +238,7 @@ class ImageTextToTextPipelineTests(unittest.TestCase):
                 ],
             }
         ]
-        outputs = pipe(text=messages, return_full_text=False, max_new_tokens=10)
+        outputs = pipe(text=messages, return_full_text=False)
         self.assertEqual(
             outputs,
             [
@@ -242,7 +255,7 @@ class ImageTextToTextPipelineTests(unittest.TestCase):
                             ],
                         }
                     ],
-                    "generated_text": "In the image, a woman is sitting on the",
+                    "generated_text": "In the image, a woman is sitting on the sandy beach, her legs crossed in a relaxed manner",
                 }
             ],
         )
@@ -250,7 +263,7 @@ class ImageTextToTextPipelineTests(unittest.TestCase):
     @slow
     @require_torch
     def test_model_pt_chat_template_image_url(self):
-        pipe = pipeline("image-text-to-text", model="llava-hf/llava-interleave-qwen-0.5b-hf")
+        pipe = pipeline("image-text-to-text", model="llava-hf/llava-onevision-qwen2-0.5b-ov-hf")
         messages = [
             {
                 "role": "user",
@@ -266,7 +279,7 @@ class ImageTextToTextPipelineTests(unittest.TestCase):
             }
         ]
         outputs = pipe(text=messages, return_full_text=False, max_new_tokens=10)[0]["generated_text"]
-        self.assertEqual(outputs, "A statue of liberty in the foreground of a city")
+        self.assertEqual(outputs, "The image captures the iconic Statue of Liberty, a")
 
     @slow
     @require_torch

@@ -2,10 +2,10 @@ FROM rocm/dev-ubuntu-22.04:6.2.4
 LABEL maintainer="Hugging Face"
 
 ARG DEBIAN_FRONTEND=noninteractive
-ARG PYTORCH='2.6.0'
-ARG TORCH_VISION='0.21.0'
-ARG TORCH_AUDIO='2.6.0'
-ARG ROCM='6.2.4'
+ARG PYTORCH='2.5.1'
+ARG TORCH_VISION='0.20.0'
+ARG TORCH_AUDIO='2.5.0'
+ARG ROCM='6.2'
 
 RUN apt update && \
     apt install -y --no-install-recommends \
@@ -16,11 +16,9 @@ RUN apt update && \
     python-is-python3 \
     rocrand-dev \
     rocthrust-dev \
-    rocblas-dev \
-    hipsolver-dev \
     hipsparse-dev \
     hipblas-dev \
-    hipblaslt-dev && \
+    rocblas-dev && \
     apt clean && \
     rm -rf /var/lib/apt/lists/*
 

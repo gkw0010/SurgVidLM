@@ -24,6 +24,7 @@ from transformers.testing_utils import (
     slow,
 )
 
+from ...generation.test_tf_utils import TFGenerationIntegrationTests
 from ...test_configuration_common import ConfigTester
 from ...test_modeling_tf_common import TFModelTesterMixin, ids_tensor, random_attention_mask
 from ...test_pipeline_mixin import PipelineTesterMixin
@@ -243,7 +244,7 @@ class TFMistralModelTester:
 
 
 @require_tf
-class TFMistralModelTest(TFModelTesterMixin, PipelineTesterMixin, unittest.TestCase):
+class TFMistralModelTest(TFModelTesterMixin, TFGenerationIntegrationTests, PipelineTesterMixin, unittest.TestCase):
     all_model_classes = (
         (TFMistralModel, TFMistralForCausalLM, TFMistralForSequenceClassification) if is_tf_available() else ()
     )
