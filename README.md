@@ -29,9 +29,9 @@ After downloading the data, put all the `json` files into `./LLaMA-Factory/data`
 ## Inference
 You can download the checkpoint after fine-tuning on our data from [here](https://pan.quark.cn/s/550ae982845e) and do inference.
 ```bash
-# Stage 1 inference
-CUDA_VISIBLE_DEVICES=0,1 python full_video_inference.py
-# Stage 2 inference
-CUDA_VISIBLE_DEVICES=0,1 python clip_inference.py
+# full video inference
+sh full_video_inference_batch.sh
+# video clip inference
+sh clip_inference_batch.sh
 ```
 
