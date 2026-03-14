@@ -19,9 +19,7 @@ pip install qwen-vl-utils==0.0.9
 
 ## Dataset
 
-Download the dataset from [here](通过网盘分享的文件：surgvidlm data
-链接: https://pan.baidu.com/s/1IKv0lHc2ngyNcCnaEV8BNQ?pwd=ma2a 提取码: ma2a 
---来自百度网盘超级会员v2的分享). For the convenience of uploading, we have split the video of the test set into two parts. After downloading, please put these two parts together.
+Download the dataset from [here](https://pan.baidu.com/s/1IKv0lHc2ngyNcCnaEV8BNQ?pwd=ma2a). For the convenience of uploading, we have split the video of the test set into two parts. After downloading, please put these two parts together.
 
 Note that the test set of our SVU-31K is available, the training set will be publicly available after the paper is accepted.
 
