@@ -11,7 +11,7 @@ conda activate surgvidlm
 # install LLaMA-Factory and  transformers adapted for SurgVidLM
 cd LLaMA-Factory && pip install -e ".[torch,metrics]" && cd .. 
 cd transformers && pip install . && cd ..
-
+https://github.com/gkw0010/SurgVidLM/blob/main/README.md
 pip install decord
 pip install flash-attn==2.8.3 --no-build-isolation
 pip install qwen-vl-utils==0.0.9
@@ -19,7 +19,9 @@ pip install qwen-vl-utils==0.0.9
 
 ## Dataset
 
-Download the dataset from [here](https://pan.quark.cn/s/0e6f74ff02fc#/list/share). For the convenience of uploading, we have split the video of the test set into two parts. After downloading, please put these two parts together.
+Download the dataset from [here](通过网盘分享的文件：surgvidlm data
+链接: https://pan.baidu.com/s/1IKv0lHc2ngyNcCnaEV8BNQ?pwd=ma2a 提取码: ma2a 
+--来自百度网盘超级会员v2的分享). For the convenience of uploading, we have split the video of the test set into two parts. After downloading, please put these two parts together.
 
 Note that the test set of our SVU-31K is available, the training set will be publicly available after the paper is accepted.
 
