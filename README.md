@@ -21,7 +21,7 @@ pip install qwen-vl-utils==0.0.9
 
 Download the dataset from [here](https://huggingface.co/datasets/gkw0010/SVU-31K/tree/main). 
 
-Note that the test set of our SVU-31K is available; the training set will be publicly available soon.
+Both the training and test sets of our SVU-31K are available.
 
 After downloading the data, put all the `json` files into `./LLaMA-Factory/data` and change the videos path to your local path.
 
