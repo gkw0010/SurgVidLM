@@ -25,6 +25,8 @@ Both the training and test sets of our SVU-31K are available.
 
 After downloading the data, put all the `json` files into `./LLaMA-Factory/data` and change the videos path to your local path.
 
+## Finetune
+
 
 ## Inference
 You can download the checkpoint after fine-tuning on our data from [here](https://pan.quark.cn/s/550ae982845e) and do inference.
