@@ -1,8 +1,8 @@
 import json
 
 # path to full video inference result and stage2 original dataset
-file1 = '/mnt/data2/wgk/surg_data/clip_train_set_no_abstract_final.json'
-file2 = '/mnt/data2/wgk/test/result/full_video_train/inference_result.json'
+file1 = '/mnt/data2/wgk/surg_data/clip_train_set_no_abstract_final.json' # stage2 training dataset
+file2 = '/mnt/data2/wgk/test/result/full_video_train/inference_result.json' # stage1 full video inference result
 
 
 with open(file1, 'r', encoding='utf-8') as f1, open(file2, 'r', encoding='utf-8') as f2:

@@ -1,13 +1,11 @@
 ### Note: DO NOT use quantized model or quantization_bit when merging lora adapters
 
 ### model
-model_name_or_path: /mnt/data2/wgk/LLaMA-Factory/saves/model/merged/qwen2-vl-full-video
-adapter_name_or_path: /mnt/data2/wgk/surgvidlm_project/LLaMA-Factory/saves/lora/video_clip_stage2_1fps_change_prompt/checkpoint-1423
-template: surgvidlm
-trust_remote_code: true
+model_name_or_path: saves/model/surgvidlm-stage1
+adapter_name_or_path: saves/lora/surgvidlm_stage2_2fps
 
 ### export
-export_dir: /mnt/data2/wgk/surgvidlm_project/LLaMA-Factory/saves/model/surgvidlm-clip-stage2_1fps/ckpt-1423
+export_dir: saves/model/surgvidlm-stage2-sft
 export_size: 5
 export_device: auto
 export_legacy_format: false
