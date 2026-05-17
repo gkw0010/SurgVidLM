@@ -161,6 +161,7 @@ class Qwen2VLImageProcessorFast(BaseImageProcessorFast):
             device (`torch.device`, *optional*):
                 The device to process the images on. If unset, the device is inferred from the input images.
         """
+        # print("使用fast _preprocess")
         images = self._prepare_input_images(
             images=images,
             do_convert_rgb=do_convert_rgb,
@@ -231,7 +232,7 @@ class Qwen2VLImageProcessorFast(BaseImageProcessorFast):
     def preprocess(
         self,
         images: ImageInput,
-        videos: VideoInput = None,
+        videos: VideoInput = None, #full video for stage1, clip for stage2
         full_videos: VideoInput = None, #surgvidlm
         do_resize: bool = None,
         size: Dict[str, int] = None,
@@ -298,6 +299,8 @@ class Qwen2VLImageProcessorFast(BaseImageProcessorFast):
             device (`torch.device`, *optional*):
                 The device to process the images on. If unset, the device is inferred from the input images.
         """
+        
+        
         do_resize = do_resize if do_resize is not None else self.do_resize
         size = size if size is not None else self.size
         resample = resample if resample is not None else self.resample
@@ -330,7 +333,7 @@ class Qwen2VLImageProcessorFast(BaseImageProcessorFast):
             images = make_flat_list_of_images(images)
         if videos is not None:
             videos = make_batched_videos(videos)
-
+            # print("videos的shape:", len(videos), len(videos[0]))
         if images is not None and not valid_images(images):
             raise ValueError(
                 "Invalid image type. Must be of type PIL.Image.Image, numpy.ndarray, "
@@ -338,6 +341,7 @@ class Qwen2VLImageProcessorFast(BaseImageProcessorFast):
             )
 
         if images is not None:
+            print("处理图像输入")
             pixel_values, vision_grid_thws = [], []
             for image in images:
                 patches, image_grid_thw = self._preprocess(
@@ -360,7 +364,9 @@ class Qwen2VLImageProcessorFast(BaseImageProcessorFast):
             vision_grid_thws = torch.tensor(vision_grid_thws)
             data = {"pixel_values": pixel_values, "image_grid_thw": vision_grid_thws}
 
+        # processing full video input(stage1) /  clip input (stage2)
         if videos is not None:
+            # print("video image_processing_qwen2vl_fast full_video shape:",len(full_videos[0]),"video shape:",len(videos[0]))
             pixel_values, vision_grid_thws = [], []
             for images in videos:
                 patches, video_grid_thw = self._preprocess(
@@ -379,34 +385,39 @@ class Qwen2VLImageProcessorFast(BaseImageProcessorFast):
                 )
                 pixel_values.extend(patches)
                 vision_grid_thws.append(video_grid_thw)
+            
+            # print(len(pixel_values), len(vision_grid_thws))
+            # print(vision_grid_thws.shape)
+            print(pixel_values[0].shape, vision_grid_thws[0])
             pixel_values = torch.stack(pixel_values)
             vision_grid_thws = torch.tensor(vision_grid_thws)
             data = {"pixel_values_videos": pixel_values, "video_grid_thw": vision_grid_thws}
         
-        if full_videos is not None:
-            # print("image_processing_qwen2vl_fast full_video shape:",len(full_videos[0]),"video shape:",len(videos[0]))
-            full_videos_pixel_values, full_videos_vision_grid_thws = [], []
-            for images in full_videos:
-                patches, video_grid_thw = self._preprocess(
-                    images,
-                    do_resize=do_resize,
-                    size=size,
-                    interpolation=interpolation,
-                    do_rescale=do_rescale,
-                    rescale_factor=rescale_factor,
-                    do_normalize=do_normalize,
-                    image_mean=image_mean,
-                    image_std=image_std,
-                    do_convert_rgb=do_convert_rgb,
-                    input_data_format=input_data_format,
-                    device=device,
-                )
-                full_videos_pixel_values.extend(patches)
-                full_videos_vision_grid_thws.append(video_grid_thw)
-            full_videos_pixel_values = torch.stack(full_videos_pixel_values)
-            full_videos_vision_grid_thws = torch.tensor(full_videos_vision_grid_thws)
-            data["pixel_values_full_videos"] = full_videos_pixel_values
-            data["full_video_grid_thw"] = full_videos_vision_grid_thws
+            #processing full video input (stage 2 only)
+            if full_videos is not None:
+                # print("full video image_processing_qwen2vl_fast full_video shape:",len(full_videos[0]),"video shape:",len(videos[0]))
+                full_videos_pixel_values, full_videos_vision_grid_thws = [], []
+                for images in full_videos:
+                    patches, video_grid_thw = self._preprocess(
+                        images,
+                        do_resize=do_resize,
+                        size=size,
+                        interpolation=interpolation,
+                        do_rescale=do_rescale,
+                        rescale_factor=rescale_factor,
+                        do_normalize=do_normalize,
+                        image_mean=image_mean,
+                        image_std=image_std,
+                        do_convert_rgb=do_convert_rgb,
+                        input_data_format=input_data_format,
+                        device=device,
+                    )
+                    full_videos_pixel_values.extend(patches)
+                    full_videos_vision_grid_thws.append(video_grid_thw)
+                full_videos_pixel_values = torch.stack(full_videos_pixel_values)
+                full_videos_vision_grid_thws = torch.tensor(full_videos_vision_grid_thws)
+                data["pixel_values_full_videos"] = full_videos_pixel_values
+                data["full_video_grid_thw"] = full_videos_vision_grid_thws
         
 
         return BatchFeature(data=data, tensor_type=return_tensors)

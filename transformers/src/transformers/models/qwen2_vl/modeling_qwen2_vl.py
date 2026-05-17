@@ -1663,7 +1663,7 @@ class Qwen2VLForConditionalGeneration(Qwen2VLPreTrainedModel, GenerationMixin):
         >>> tokenizer.batch_decode(generate_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
         "The image shows a street scene with a red stop sign in the foreground. In the background, there is a large red gate with Chinese characters ..."
         ```"""
-        # print("执行forward")
+        
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
             output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
@@ -1699,12 +1699,12 @@ class Qwen2VLForConditionalGeneration(Qwen2VLPreTrainedModel, GenerationMixin):
 
                 # SurgVidLM
                 if pixel_values_full_videos is not None:
-                    # print("执行mixed attention")
+                    # print("execute fusion attention")
                     pixel_values_full_videos = pixel_values_full_videos.type(self.visual.get_dtype())
                     full_video_embeds = self.visual(pixel_values_full_videos, grid_thw=full_video_grid_thw) 
                     
                     D = video_embeds.size(-1)
-                    #不加layer norm
+                    
                     q = video_embeds  # [Nc, D] clip token
                     k = full_video_embeds # [Nf, D] full video token
                     v = full_video_embeds  # [Nf, D]           
@@ -1712,8 +1712,11 @@ class Qwen2VLForConditionalGeneration(Qwen2VLPreTrainedModel, GenerationMixin):
                     out = attn_score @ v  #softmax(Xc*Xf.T）*Xf
                     
                     video_embeds = out + video_embeds  #residual connection # softmax(Xc*Xf.T）*Xf+Xc
-                   
-                
+                    
+                    print("video_embes shape:", video_embeds.shape,"full_video_embeds shape:", full_video_embeds.shape,"attn_score shape:", attn_score.shape,"out shape:", out.shape)
+                    
+                else:
+                    print("stage1 training only")
                 
                 n_video_tokens = (input_ids == self.config.video_token_id).sum().item()
                 

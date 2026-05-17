@@ -94,7 +94,7 @@ def inference_batch(result_folder, model_path, test_data_path):
                     generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
                 )
 
-            #生成结构化的结果
+            #construct structured result
             result_json = {
                 "total_id":item['total_id'],
                 # "old_id": item['id'],
@@ -106,7 +106,7 @@ def inference_batch(result_folder, model_path, test_data_path):
             }
             results.append(result_json)
 
-            #保存 check
+            #save
             if i%1 ==0 or i==len(test)-1:
                 timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S') 
                 print(f"[{timestamp}]:inferencing:{i}/{len(test)}")

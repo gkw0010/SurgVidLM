@@ -42,7 +42,7 @@ class SupervisedDatasetProcessor(DatasetProcessor):
         timecodes: Sequence[int]=None
     ) -> Tuple[List[int], List[int]]:
         
-        if timecodes is not None:
+        if timecodes is not None and len(timecodes)!=0:  # SurgVidLM
             messages = self.template.mm_plugin.process_messages(prompt + response, images, videos, audios, self.processor,timecodes=[timecodes]) # SurgVidLM
         else:
             messages = self.template.mm_plugin.process_messages(prompt + response, images, videos, audios, self.processor)
