@@ -25,13 +25,63 @@ Note that the test set of our SVU-31K is available, the training set will be pub
 
 After downloading the data, put all the `json` files into `./LLaMA-Factory/data` and change the videos path to your local path.
 
+## Finetune
+Due to the large amount of data,  the tokenization process requires a long time to complete. We recommend you to save the tokenizer before training (already implemented in the training config).
+### stage 1
+For stage 1 fine-tuning, use the following command: 
+```Shell
+sh train_stage1.sh
+llamafactory-cli export examples/merge_lora/surgvidlm_lora_sft_stage1.yaml
+```
+You can change the training config at examples/train_lora/surgvidlm_lora_sft_stage1.yaml if needed.
+
+### stage 2
+For stage 2 fine-tuning:
+1. You first need to run inference on stage 1 training dataset to obtain full video description. Use the following command: 
+```Shell
+python full_video_inference_batch.py \
+    --result_folder="/path/to/your/result_folder" \
+    --model_path="/path/to/your/stage1_checkpoint" \
+    --data_path="/path/to/your/stage1_training_data.json"
+```
+2. Use the following command to construct stage 2 fine-tuning dataset:
+```Shell
+python gen_dataset_stage2.py
+```
+3. Use the following command for stage 2 fine-tuning:
+```Shell
+sh train_stage2.sh
+llamafactory-cli export examples/merge_lora/surgvidlm_lora_sft_stage2.yaml
+```
 
 ## Inference
 You can download the checkpoint after fine-tuning on our data from [here](https://pan.quark.cn/s/550ae982845e) and do inference.
+
+For single-sample inference, use the following command:
 ```bash
 # Stage 1 inference
-CUDA_VISIBLE_DEVICES=0,1 python full_video_inference.py
+python full_video_inference.py
 # Stage 2 inference
-CUDA_VISIBLE_DEVICES=0,1 python clip_inference.py
+python clip_inference.py
 ```
 
+For batch inference, use the following command:
+```bash
+# Stage 1 inference
+python full_video_inference_batch.py \
+    --result_folder="/path/to/your/result_folder" \
+    --model_path="/path/to/your/model_checkpoint" \
+    --data_path="/path/to/your/test_data.json"
+
+# Stage 2 inference
+python clip_inference_batch.py \
+    --result_folder="/path/to/your/result_folder" \
+    --model_path="/path/to/your/model_checkpoint" \
+    --data_path="/path/to/your/test_data.json"
+```
+
+## Evaluation
+For evaluation, run the following command:
+```bash
+sh evalute_metrics.sh
+```

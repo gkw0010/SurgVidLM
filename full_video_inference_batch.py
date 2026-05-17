@@ -78,7 +78,7 @@ def inference_batch(result_folder, model_path, test_data_path):
                     text=[text],
                     images=image_inputs,
                     videos=video_inputs,
-                    # fps=2.0,
+                    fps=2.0,
                     padding=True,
                     return_tensors="pt",
                     **video_kwargs,
@@ -123,14 +123,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run full video inference batch")
     parser.add_argument("--result_folder", type=str, required=True, help="Folder to store results")
     parser.add_argument("--model_path", type=str, required=True, help="Path to the pretrained model")
-    parser.add_argument("--test_data_path", type=str, required=True, help="Path to the test JSON file")
+    parser.add_argument("--data_path", type=str, required=True, help="Path to the test JSON file")
 
     args = parser.parse_args()
 
     result_folder=args.result_folder
     model_path=args.model_path
-    test_data_path=args.test_data_path
-    inference_batch(args.result_folder, args.model_path, args.test_data_path)
+    data_path=args.data_path
+    inference_batch(result_folder, model_path, data_path)
     # result_folder="/mnt/data2/wgk/test/surgvidlm_ablation/result/surgvidlm_wo_stage2_open"
     # model_path="/mnt/data2/wgk/LLaMA-Factory/saves/model/merged/qwen2-vl-full-video"
     # test_data_path="/mnt/data2/wgk/test/surgvidlm_ablation/test_full.json"

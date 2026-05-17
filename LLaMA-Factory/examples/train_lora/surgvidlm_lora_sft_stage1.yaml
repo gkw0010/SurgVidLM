@@ -17,7 +17,7 @@ lora_target: all
 dataset: svu-31k-full-video
 template: qwen2_vl
 cutoff_len: 25000
-max_samples: 2500 # for stage 1 training, set max_samples to 2500
+max_samples: 10 # for stage 1 training, set max_samples to 2500
 overwrite_cache: true
 preprocessing_num_workers: 16 # increase the number of workers to accelerate the preprocessing process
 preprocessing_batch_size: 128
@@ -25,8 +25,8 @@ dataloader_num_workers: 1
 
 
 ### output
-tokenized_path: /mnt/data2/wgk/surgvidlm_project/surgvidlm_open/LLaMA-Factory/saves/tokenizer/tokenizer_full_video #check
-output_dir: /mnt/data2/wgk/surgvidlm_project/surgvidlm_open/LLaMA-Factory/saves/lora/qwen2_vl_full_video #check
+tokenized_path: saves/tokenizer/tokenizer_full_video #check
+output_dir: saves/lora/qwen2_vl_full_video #check
 logging_steps: 1
 save_strategy: "steps"
 save_steps: 37
