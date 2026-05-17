@@ -95,6 +95,7 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
         batch_images, batch_videos, batch_audios = [], [], []
         batch_imglens, batch_vidlens, batch_audlens, batch_input_ids = [], [], [], []
         # SurgVidLM
+        # print("进入MultiModalDataCollatorForSeq2Seq的__call__函数，开始处理输入特征。")
         batch_timecodes = []
         for feature in features:
             images = feature.pop("images", None) or []
@@ -109,8 +110,13 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
             batch_input_ids.append(feature["input_ids"])
             # SurgVidLM
             if "timecodes" in feature:
-                batch_timecodes.append(feature["timecodes"])
-
+                timecodes = feature.pop("timecodes", None)
+                if timecodes is not None:
+                    batch_timecodes.append(timecodes)
+        
+        # print("完成输入特征的初步处理，开始调用模板处理视觉信息。")
+        # print(batch_timecodes)
+            
         fake_input_ids = []
         if (
             self.template.mm_plugin.image_token is not None and sum(batch_imglens) == 0 and sum(batch_vidlens) == 0
@@ -156,24 +162,43 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
 
             batch_input_ids[0] = features[0]["input_ids"]
 
-        mm_inputs = self.template.mm_plugin.get_mm_inputs(
-            batch_images,
-            batch_videos,
-            batch_audios,
-            batch_imglens,
-            batch_vidlens,
-            batch_audlens,
-            batch_input_ids,
-            self.processor,
-            batch_timecodes # SurgVidLM
-        )
-      
+        # SurgVidLM
+        if len(batch_timecodes) == 0:
+            #stage 1 training: full video
+            # print("未检测到timecodes字段，说明这是SurgVidLM的阶段1训练输入特征，将按阶段1处理视觉信息。")
+            mm_inputs = self.template.mm_plugin.get_mm_inputs(
+                batch_images,
+                batch_videos,
+                batch_audios,
+                batch_imglens,
+                batch_vidlens,
+                batch_audlens,
+                batch_input_ids,
+                self.processor,
+            )
+        else:
+            #stage 2 training: video clip
+            mm_inputs = self.template.mm_plugin.get_mm_inputs(
+                batch_images,
+                batch_videos,
+                batch_audios,
+                batch_imglens,
+                batch_vidlens,
+                batch_audlens,
+                batch_input_ids,
+                self.processor,
+                batch_timecodes # SurgVidLM
+            )
+        
+        
+        
         if "token_type_ids" in mm_inputs:
             token_type_ids = mm_inputs.pop("token_type_ids")
             for i, feature in enumerate(features):
                 feature["token_type_ids"] = token_type_ids[i]
 
         # SurgVidLM
+        # remove timecodes from features
         for i, feature in enumerate(features):
             if "timecodes" in feature:
                 features[i].pop("timecodes")
@@ -181,6 +206,61 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
         features: Dict[str, "torch.Tensor"] = super().__call__(features)
 
         if self.model is not None and hasattr(self.model, "get_rope_index"):  # for qwen2vl mrope
+            # 中文注释：在调用 get_rope_index 前做最小一致性日志检查，便于定位 video token 与 video_grid_thw 不匹配问题。
+            video_grid_thw = mm_inputs.get("video_grid_thw")
+            video_token_id = getattr(getattr(self.model, "config", None), "video_token_id", None)
+            vision_cfg = getattr(getattr(self.model, "config", None), "vision_config", None)
+            spatial_merge_size = getattr(vision_cfg, "spatial_merge_size", 2)
+
+            # 中文注释：仅在关键信息都存在时进行检查；若不完整则跳过，不影响原流程。
+            if video_grid_thw is not None and video_token_id is not None and len(batch_vidlens) == features["input_ids"].size(0):
+                try:
+                    if not torch.is_tensor(video_grid_thw):
+                        video_grid_thw = torch.tensor(video_grid_thw)
+
+                    if video_grid_thw.numel() > 0:
+                        grid_cursor = 0
+                        for i, vid_len in enumerate(batch_vidlens):
+                            sample_grid = video_grid_thw[grid_cursor : grid_cursor + vid_len]
+                            grid_cursor += vid_len
+
+                            expected_video_tokens = 0
+                            if sample_grid.numel() > 0:
+                                sample_grid = sample_grid.to(torch.long)
+                                expected_video_tokens = int(
+                                    (
+                                        sample_grid[:, 0]
+                                        * (sample_grid[:, 1] // spatial_merge_size)
+                                        * (sample_grid[:, 2] // spatial_merge_size)
+                                    ).sum().item()
+                                )
+
+                            actual_video_tokens = int(
+                                (
+                                    (features["input_ids"][i] == video_token_id)
+                                    & (features["attention_mask"][i] == 1)
+                                ).sum().item()
+                            )
+
+                            # 中文注释：只在出现不一致时打印，避免日志过多。
+                            if expected_video_tokens != actual_video_tokens:
+                                valid_len = int((features["attention_mask"][i] == 1).sum().item())
+                                print(
+                                    "[SurgVidLM诊断] 第{}个样本视频token不匹配: expected_from_grid={}, "
+                                    "actual_in_input_ids={}, valid_len={}, vid_len={}, spatial_merge_size={}, sample_grid_thw={}".format(
+                                        i,
+                                        expected_video_tokens,
+                                        actual_video_tokens,
+                                        valid_len,
+                                        vid_len,
+                                        spatial_merge_size,
+                                        sample_grid.tolist() if sample_grid.numel() > 0 else [],
+                                    )
+                                )
+                except Exception as e:
+                    # 中文注释：诊断代码不应中断训练；异常时仅打印提示。
+                    print(f"[SurgVidLM诊断] 跳过video token一致性检查，原因: {e}")
+
             rope_index_kwargs = {
                 "input_ids": features["input_ids"],
                 "image_grid_thw": mm_inputs.get("image_grid_thw"),
