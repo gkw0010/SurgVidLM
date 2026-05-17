@@ -54,6 +54,7 @@ sh train_stage2.sh
 llamafactory-cli export examples/merge_lora/surgvidlm_lora_sft_stage2.yaml
 ```
 
+### stage 2
 ## Inference
 You can download the checkpoint after fine-tuning on our data from [here](https://pan.quark.cn/s/550ae982845e) and do inference.
 
