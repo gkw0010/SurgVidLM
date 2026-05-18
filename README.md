@@ -19,7 +19,7 @@ pip install qwen-vl-utils==0.0.9
 
 ## Dataset
 
-Download the dataset from [here](https://pan.quark.cn/s/0e6f74ff02fc#/list/share). For the convenience of uploading, we have split the video of the test set into two parts. After downloading, please put these two parts together.
+Download the dataset from [here](https://huggingface.co/datasets/gkw0010/SVU-31K/tree/main). For the convenience of uploading, we have split the video of the test set into two parts. After downloading, please put these two parts together.
 
 Note that the test set of our SVU-31K is available, the training set will be publicly available after the paper is accepted.
 
@@ -54,9 +54,8 @@ sh train_stage2.sh
 llamafactory-cli export examples/merge_lora/surgvidlm_lora_sft_stage2.yaml
 ```
 
-### stage 2
 ## Inference
-You can download the checkpoint after fine-tuning on our data from [here](https://pan.quark.cn/s/550ae982845e) and do inference.
+You can download the checkpoint after fine-tuning on our data from [here](https://huggingface.co/datasets/gkw0010/SVU-31K/tree/main) and do inference.
 
 For single-sample inference, use the following command:
 ```bash
